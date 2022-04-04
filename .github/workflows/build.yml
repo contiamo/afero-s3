@@ -39,6 +39,16 @@ jobs:
 
       - uses: actions/setup-go@v2
 
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+            ~/go/bin
+          key: ${{ runner.os }}-${{ matrix.go }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.go }}-
+
       # Running golangci-lint
       - name: Run golangci-lint
         if: matrix.lint
