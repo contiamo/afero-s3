@@ -25,4 +25,8 @@ tasks:
     cmds:
       - task: pre-test
       - defer: { task: post-test }
-      - go test -cover -v ./...
+      - task: run-test
+
+  run-test:
+    cmds:
+      - go test -cover -covermode=atomic -v ./...
