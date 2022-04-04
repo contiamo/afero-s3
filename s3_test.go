@@ -588,6 +588,24 @@ func TestFileStat(t *testing.T) {
 			t.Fatal("Wrong file mode")
 		}
 	}
+
+	t.Run("can safely stat on /", func(t *testing.T) {
+		stat, err := fs.Stat("/")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !stat.IsDir() {
+			t.Fatal("/ should be a directory")
+		}
+
+		if stat.Name() != "/" {
+			t.Fatalf("wanted /, got %q", stat.Name())
+		}
+
+		if stat.Mode() != 0755 {
+			t.Fatal("Wrong mode")
+		}
+	})
 }
 
 func testCreateFile(t *testing.T, fs afero.Fs, name string, content string) {
