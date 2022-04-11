@@ -1,27 +1,41 @@
 version: "3"
 
 dotenv: [".env"]
+silent: true
+vars:
+  # when updating this value, plese update
+  # the .github/workflows/build.yml
+  MINIO: RELEASE.2022-04-09T15-09-52Z
 
 tasks:
   bingo:
+    desc: "Install build dependencies"
     cmds:
-      - make -f .bingo/Variables.mk
+      - make -s -f .bingo/Variables.mk
 
   pre-test:
+    desc: "Run pre-test tasks, start a minio server"
     status:
       - test $(docker ps | grep miniotest | awk '{print $1}')
     cmds:
-      - docker run --rm -d --name miniotest -p 9000:9000 fclairamb/minio-github-actions:v0.2
+      - echo "Starting test minio server"
+      - docker run --rm -d --name miniotest -p 9000:9000 eu.gcr.io/contiamo-public/minio:{{.MINIO}} server /data
 
   post-test:
+    desc: "Run post-test cleanup, stop the minio test server"
     cmds:
+      - echo "Stopping test minio server"
       - docker kill miniotest
 
   lint:
+    summery: "Run go lint tasks"
+    deps:
+      - bingo
     cmds:
       - $GOBIN/golangci-lint-v1.45.2 run ./...
 
   test:
+    desc: "Run pre-test, the go test suite, and then post-test"
     cmds:
       - task: pre-test
       - defer: { task: post-test }
@@ -30,3 +44,15 @@ tasks:
   run-test:
     cmds:
       - go test -cover -covermode=atomic -v ./...
+
+  run-example:
+    desc: run the example cli
+    cmds:
+      - go run ./example/main.go {{.CLI_ARGS}}
+
+  sync-minio:
+    desc: sync the minio image to the Contiamo public registry
+    cmds:
+      - docker pull minio/minio:{{.MINIO}}
+      - docker tag minio/minio:{{.MINIO}} eu.gcr.io/contiamo-public/minio:{{.MINIO}}
+      - docker push eu.gcr.io/contiamo-public/minio:{{.MINIO}}

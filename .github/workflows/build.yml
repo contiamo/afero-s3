@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       minio:
-        image: fclairamb/minio-github-actions:v0.2
+        image: eu.gcr.io/contiamo-public/minio:RELEASE.2022-04-09T15-09-52Z
         # env:
         #  MINIO_COMMAND: server
         ports:

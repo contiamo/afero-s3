@@ -1,62 +1,106 @@
 # S3 Backend for Afero
 
-![Build](https://github.com/fclairamb/afero-s3/workflows/Build/badge.svg)
-[![codecov](https://codecov.io/gh/fclairamb/afero-s3/branch/main/graph/badge.svg?token=OZ2WZ969O5)](https://codecov.io/gh/fclairamb/afero-s3)
-[![Go Report Card](https://goreportcard.com/badge/fclairamb/afero-s3)](https://goreportcard.com/report/fclairamb/afero-s3)
-[![GoDoc](https://godoc.org/github.com/fclairamb/afero-s3?status.svg)](https://godoc.org/github.com/fclairamb/afero-s3)
-
+![Build](https://github.com/contiamo/afero-s3/workflows/Build/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/contiamo/afero-s3)](https://goreportcard.com/report/contiamo/afero-s3)
+[![GoDoc](https://godoc.org/github.com/contiamo/afero-s3?status.svg)](https://godoc.org/github.com/contiamo/afero-s3)
 
 ## About
+
 It provides an [afero filesystem](https://github.com/spf13/afero/) implementation of an [S3](https://aws.amazon.com/s3/) backend.
 
-This was created to provide a backend to the [ftpserver](https://github.com/fclairamb/ftpserver) but can definitely be used in any other code.
+There are some other alternatives, but this implementation focuses on efficient memory usage by streaming the file download and uploads.
 
-I'm very opened to any improvement through issues or pull-request that might lead to a better implementation or even
-better testing.
-
-## Key points
-- Download & upload file streaming
-- 75% coverage (all APIs are tested, but not all errors are reproduced)
-- Very carefully linted
+We are open to any improvement through issues or pull-request that might lead to a better implementation or even better testing.
 
 ## Known limitations
+
 - File appending / seeking for write is not supported because S3 doesn't support it, it could be simulated by rewriting entire files.
 - Chtimes is not supported because S3 doesn't support it, it could be simulated through metadata.
 - Chmod support is very limited
 
-
 ## How to use
-Note: Errors handling is skipped for brevity but you definitely have to handle it.
-```golang
 
-import(
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-  
-	s3 "github.com/fclairamb/afero-s3"
+Note: Errors handling is skipped for brevity but a complete example is provided in the [`example` folder](./example/main.go)
+
+```golang
+package main
+
+import (
+	"context"
+	"io"
+	"log"
+	"os"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+
+	s3fs "github.com/contiamo/afero-s3"
+)
+
+var (
+	region = "us-west-2"
+	bucket = "my-bucket"
+	key    = "/path/to/file.txt"
+	output = "-"
 )
 
 func main() {
-  // You create a session
-  sess, _ := session.NewSession(&aws.Config{
-    Region:      aws.String(region),
-    Credentials: credentials.NewStaticCredentials(keyID, secretAccessKey, ""),
-  })
+	ctx := context.Background()
 
-  // Initialize the file system
-  s3Fs := s3.NewFs(bucket, sess)
+  // initialize the S3 client
+	cfg, _ := config.LoadDefaultConfig(ctx,
+		config.WithRegion(region),
+	)
 
-  // And do your thing
-  file, _ := fs.OpenFile("file.txt", os.O_WRONLY, 0777)
-  file.WriteString("Hello world !")
-  file.Close()
-}
+	s3Client := s3.NewFromConfig(cfg, func(options *s3.Options) {
+		options.UsePathStyle = true
+	})
+
+	// Initialize the file system
+	fs := s3fs.NewFsFromClient(bucket, s3Client)
+
+	// And do your thing
+	src, _ := fs.Open(key)
+	defer src.Close()
+
+	var out = os.Stdout
+	n, _ := io.Copy(out, src)
+
+	log.Printf("copied %d bytes", n)
+```
+
+## Development
+
+The project uses [`Taskfile`](https://taskfile.dev/#/) to orchestrate the local development flow.
+
+```sh
+go install github.com/go-task/task/v3/cmd/task@latest
+```
+
+Install `task`, and then use
+
+```sh
+# see the available dev tasks
+task --list
+```
+
+To run the test suite:
+
+```sh
+task test
+```
+
+To run the example code:
+
+```sh
+task run-example -- --help
 ```
 
 ## Thanks
 
 The initial code (which was massively rewritten) comes from:
-- [wreulicke's fork](https://github.com/wreulicke/afero-s3)
+
+- [fclairamb's fork](https://github.com/fclairamb/afero-s3)
+- Which comes from [wreulicke's fork](https://github.com/wreulicke/afero-s3)
 - Itself forked from [aviau's fork](https://github.com/aviau/).
 - Initially proposed as [an afero PR](https://github.com/spf13/afero/pull/90) by [rgarcia](https://github.com/rgarcia) and updated by [aviau](https://github.com/aviau).
