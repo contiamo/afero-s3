@@ -900,3 +900,54 @@ func TestFileInfo(t *testing.T) {
 	fi := NewFileInfo("name", false, 1024, time.Now())
 	require.Nil(t, fi.Sys())
 }
+
+func TestSanitize(t *testing.T) {
+	cases := []struct {
+		name      string
+		value     string
+		expected  string
+		separator rune
+	}{
+		{
+			name:     "empty",
+			value:    "",
+			expected: "",
+		},
+		{
+			name:     "linux path is unchanged",
+			value:    "/path/to/file",
+			expected: "/path/to/file",
+		},
+		{
+			name:     "linux path to directory is unchanged",
+			value:    "/path/to/dir/",
+			expected: "/path/to/dir/",
+		},
+		{
+			name:     "handles linux root path",
+			value:    "/",
+			expected: "/",
+		},
+		// {
+		// 	name:     "handles windows root path",
+		// 	value:    "C:\\",
+		// 	expected: "/",
+		// },
+		// {
+		// 	name:     "handles windows path",
+		// 	value:    "C:\\foo\\bar",
+		// 	expected: "/foo/bar",
+		// },
+		// {
+		// 	name:     "handles windows path with spaces",
+		// 	value:    "C:\\foo\\bar baz",
+		// 	expected: "/foo/bar baz",
+		// },
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, sanitize(tc.value))
+		})
+	}
+}

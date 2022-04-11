@@ -10,7 +10,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -371,13 +370,31 @@ func applyFileWriteProps(input *s3.PutObjectInput, p *UploadedFileProperties) {
 
 // sanitize name to ensure it uses forward slash paths even on Windows systems.
 func sanitize(name string) string {
-	if runtime.GOOS == "windows" {
-		// safely clean-up the path
-		name = filepath.Clean(name)
-		// remove the volume name if it exists,
-		// e.g. remove C: from C:\path\to\file
-		name = strings.TrimPrefix(name, filepath.VolumeName(name))
+	// special case, not sure what an empty value
+	// _SHOULD_ map to, so just return it.
+	// Clean would try to map it to "."
+	if strings.TrimSpace(name) == "" {
+		return ""
 	}
+
+	// safely clean-up the path
+	out := filepath.Clean(name)
+
+	// clean will remove trailing slashes, but we want to preserve it
+	// clean _does_ not strip the leading slash, so we have a special check
+	// for the `/` case.
+	if strings.HasSuffix(name, string(filepath.Separator)) && len(out) > 1 {
+		out += string(filepath.Separator)
+	}
+
+	// On Windows: remove the volume name if it exists,
+	// e.g. remove C: from C:\path\to\file,
+	// Other OSes: a no-op
+	prefix := filepath.VolumeName(out)
+	if prefix != "" {
+		out = strings.TrimPrefix(out, prefix)
+	}
+
 	// s3 requires forward slashes
-	return filepath.ToSlash(name)
+	return filepath.ToSlash(out)
 }
