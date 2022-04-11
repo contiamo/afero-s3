@@ -19,7 +19,7 @@ tasks:
       - test $(docker ps | grep miniotest | awk '{print $1}')
     cmds:
       - echo "Starting test minio server"
-      - docker run --rm -d --name miniotest -p 9000:9000 eu.gcr.io/contiamo-public/minio:{{.MINIO}} server /data
+      - docker run --rm -d --name miniotest -p 9000:9000 eu.gcr.io/contiamo-public/minio:{{.MINIO}}
 
   post-test:
     desc: "Run post-test cleanup, stop the minio test server"
@@ -43,16 +43,21 @@ tasks:
 
   run-test:
     cmds:
-      - go test -cover -covermode=atomic -v ./...
+      - go test -cover -covermode=atomic -v ./... {{.CLI_ARGS}}
 
   run-example:
     desc: run the example cli
     cmds:
       - go run ./example/main.go {{.CLI_ARGS}}
 
+  build-minio:
+    dir: contrib/docker
+    cmds:
+      - docker build -t eu.gcr.io/contiamo-public/minio:{{.MINIO}} .
+
   sync-minio:
     desc: sync the minio image to the Contiamo public registry
+    dir: contrib/docker
     cmds:
-      - docker pull minio/minio:{{.MINIO}}
-      - docker tag minio/minio:{{.MINIO}} eu.gcr.io/contiamo-public/minio:{{.MINIO}}
+      - task: build-minio
       - docker push eu.gcr.io/contiamo-public/minio:{{.MINIO}}
