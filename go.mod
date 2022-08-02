@@ -3,11 +3,11 @@ module github.com/contiamo/afero-s3
 go 1.18
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.16.5
+	github.com/aws/aws-sdk-go-v2 v1.16.8
 	github.com/aws/aws-sdk-go-v2/credentials v1.12.6
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.16
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.11
-	github.com/aws/smithy-go v1.11.3
+	github.com/aws/smithy-go v1.12.0
 	github.com/spf13/afero v1.8.2
 	github.com/stretchr/testify v1.7.5
 )
