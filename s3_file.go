@@ -75,22 +75,23 @@ func (f *File) Readdir(n int) ([]os.FileInfo, error) {
 	if name != "" && !strings.HasSuffix(name, "/") {
 		name += "/"
 	}
+	maxKeys := int32(n)
 	output, err := f.fs.client.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{
 		ContinuationToken: f.readdirContinuationToken,
 		Bucket:            aws.String(f.fs.bucket),
 		Prefix:            &name,
 		Delimiter:         aws.String("/"),
-		MaxKeys:           int32(n),
+		MaxKeys:           &maxKeys,
 	})
 	if err != nil {
 		return nil, err
 	}
 	f.readdirContinuationToken = output.NextContinuationToken
-	if !output.IsTruncated {
+	if !*output.IsTruncated {
 		f.readdirNotTruncated = true
 	}
 
-	var fis = make([]os.FileInfo, 0, len(output.CommonPrefixes)+len(output.Contents))
+	fis := make([]os.FileInfo, 0, len(output.CommonPrefixes)+len(output.Contents))
 	for _, subfolder := range output.CommonPrefixes {
 		fis = append(fis, NewFileInfo(path.Base("/"+*subfolder.Prefix), true, 0, time.Unix(0, 0)))
 	}
@@ -101,13 +102,13 @@ func (f *File) Readdir(n int) ([]os.FileInfo, error) {
 			continue
 		}
 
-		fis = append(fis, NewFileInfo(path.Base("/"+*fileObject.Key), false, fileObject.Size, *fileObject.LastModified))
+		fis = append(fis, NewFileInfo(path.Base("/"+*fileObject.Key), false, *fileObject.Size, *fileObject.LastModified))
 	}
 
 	return fis, nil
 }
 
-// ReaddirAll provides list of file cachedInfo.
+// ReaddirAll provides list of file cachedInfo
 func (f *File) ReaddirAll() ([]os.FileInfo, error) {
 	var fileInfos []os.FileInfo
 	for {
@@ -292,7 +293,6 @@ func (f *File) seekRead(offset int64, whence int) (int64, error) {
 // Write returns a non-nil error when n != len(b).
 func (f *File) Write(p []byte) (int, error) {
 	n, err := f.streamWrite.Write(p)
-
 	// If we have an error, it's only the "read/write on closed pipe" and we
 	// should report the underlying one
 	if err != nil {
@@ -332,7 +332,6 @@ func (f *File) openWriteStream() error {
 		}
 
 		_, err := uploader.Upload(context.Background(), input)
-
 		if err != nil {
 			f.streamWriteErr = err
 			_ = f.streamWrite.Close()
